@@ -1,0 +1,167 @@
+body {
+  background: #f5f6fa;
+}
+
+.card {
+  border: 1px solid rgba(0, 0, 0, .06);
+}
+
+.stage-badge {
+  font-weight: 500;
+  letter-spacing: .2px;
+}
+
+/* Stage colour-coding so the dashboard reads at a glance.
+   Cooler colours for early stages, warmer/greener as we progress. */
+.stage-initial_contact   { background: #e3e8f0; color: #44546a; }
+.stage-in_discussion     { background: #cfe2ff; color: #084298; }
+.stage-agreement_sent    { background: #ffe5b4; color: #8a5a00; }
+.stage-agreement_signed  { background: #d1e7dd; color: #0f5132; }
+.stage-csv_sent          { background: #cff4fc; color: #055160; }
+.stage-products_listed   { background: #b7e4d2; color: #0a4d3a; }
+.stage-first_order_placed{ background: #198754; color: #fff; }
+.stage-other             { background: #f0e6ff; color: #5b3a99; }
+
+/* Tag pills (customer-level labels). Base styles; colours come from
+   one of 12 .tag-color-N palettes, picked deterministically per tag
+   name in the tag_color Jinja filter. */
+.tag-badge {
+  font-weight: 500;
+  padding: .35rem .65rem;
+  border-radius: 1rem;
+  font-size: .75rem;
+  border: 1px solid transparent;
+  text-decoration: none;
+  cursor: default;
+}
+button.tag-badge { cursor: pointer; }
+button.tag-badge:focus { outline: 2px solid rgba(13,110,253,.35); outline-offset: 1px; }
+button.tag-badge.tag-active {
+  box-shadow: 0 0 0 2px rgba(13,110,253,.45);
+}
+
+/* 12 distinct colour palettes, picked to be readable on a light page
+   and easy to tell apart at a glance. (bg, border, text). */
+.tag-color-0  { background: #fde2e4; border-color: #f8b4b8; color: #842029; }
+.tag-color-1  { background: #ffe9c8; border-color: #f7c785; color: #8a5a00; }
+.tag-color-2  { background: #fff3bf; border-color: #ffd966; color: #6b5800; }
+.tag-color-3  { background: #d8f3dc; border-color: #95d5b2; color: #1b4332; }
+.tag-color-4  { background: #c7e7d6; border-color: #74c69d; color: #095c3a; }
+.tag-color-5  { background: #cfe7f5; border-color: #82b9e0; color: #0c4a6e; }
+.tag-color-6  { background: #d6e0fb; border-color: #94a8e7; color: #1e3a8a; }
+.tag-color-7  { background: #e2d6fb; border-color: #b39ce6; color: #4c1d95; }
+.tag-color-8  { background: #f3d4f1; border-color: #d99fd6; color: #6b21a8; }
+.tag-color-9  { background: #f7d4e3; border-color: #e09cbe; color: #831843; }
+.tag-color-10 { background: #d9f3f3; border-color: #79c8c8; color: #134e4a; }
+.tag-color-11 { background: #e3e1d4; border-color: #b6b29c; color: #4b4634; }
+
+.tag-remove {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin-left: .25rem;
+  font-size: 1rem;
+  line-height: 1;
+  color: inherit;
+  opacity: .6;
+  cursor: pointer;
+}
+.tag-remove:hover { opacity: 1; }
+
+/* Column filter buttons in the dashboard table head — now a small icon
+   button with a hover state, so it reads as clearly clickable. */
+.filter-toggle {
+  background: #eef1f5;
+  border: 1px solid #d6dbe2;
+  border-radius: 6px;
+  padding: .15rem .35rem;
+  line-height: 1;
+  color: #44546a;
+  vertical-align: middle;
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  transition: background .12s ease, color .12s ease, border-color .12s ease;
+}
+.filter-toggle:hover,
+.filter-toggle:focus-visible {
+  background: #dee5ef;
+  color: #1f2a44;
+  border-color: #b7c2d2;
+}
+.filter-toggle::after { display: none; }   /* kill Bootstrap's caret */
+.filter-toggle.filter-active {
+  background: #cfe2ff;
+  border-color: #6ea8fe;
+  color: #084298;
+}
+.filter-count { font-size: .65rem; padding: .15em .4em; }
+
+/* Compact dismissible alerts (used for the logout banner). Bootstrap's
+   close button is absolutely positioned with its own large padding,
+   which makes it appear bottom-aligned when py-2 shrinks the alert.
+   Force it to true vertical center. */
+.alert.py-2.alert-dismissible .btn-close {
+  top: 50%;
+  transform: translateY(-50%);
+  padding: .25rem 1rem;
+}
+
+.nav-tabs .nav-link {
+  color: #495057;
+}
+.nav-tabs .nav-link.active {
+  font-weight: 600;
+}
+
+.product-meta {
+  font-size: .75rem;
+  white-space: nowrap;
+}
+
+.product-row {
+  transition: opacity .12s ease;
+}
+.product-list .empty-placeholder {
+  font-style: italic;
+}
+
+.list-group-item {
+  border-left: 0;
+  border-right: 0;
+}
+.list-group-item:first-child { border-top: 0; }
+.list-group-item:last-child  { border-bottom: 0; }
+
+/* Contacts box — keep it compact so it doesn't waste space. */
+.contact-list .list-group-item { padding: .65rem 1rem; }
+.contact-list .gap-x-2 { column-gap: .5rem; }
+.contact-list .contact-meta { line-height: 1.3; }
+.contact-list .contact-sep { opacity: .55; margin: 0 .35rem; }
+.contact-list .contact-notes {
+  white-space: pre-wrap;
+  color: #555c66;
+  background: #f7f8fa;
+  border-radius: 4px;
+  padding: .35rem .5rem;
+}
+.min-w-0 { min-width: 0; }   /* lets flex children truncate properly */
+
+/* New-customer form section heading: tiny uppercase label sitting above
+   each subsection. */
+.customer-form .form-section-heading {
+  letter-spacing: .05em;
+  border-bottom: 1px solid #e6e8ec;
+  padding-bottom: .4rem;
+}
+/* Subtle vertical rule between the two columns on wider screens; on
+   stacked (small) screens it converts to a top spacer instead. */
+@media (min-width: 992px) {
+  .customer-form .form-section-divider {
+    border-left: 1px solid #eef0f3;
+    padding-left: 1.5rem;
+  }
+}
+@media (max-width: 991.98px) {
+  .customer-form .form-section-divider { margin-top: .5rem; }
+}
