@@ -1,0 +1,362 @@
+{% extends "base.html" %}
+{% block title %}Customers &middot; Customer Tracker{% endblock %}
+{% block content %}
+
+{# Funnel SVG used as the per-column filter icon. Saved as a Jinja
+   variable so it can be reused inline in every header without bloat. #}
+{% set funnel_svg %}
+<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+  <path d="M1.5 1.5A.5.5 0 0 1 2 1h12a.5.5 0 0 1 .39.81l-4.89 6.12V13.5a.5.5 0 0 1-.28.45l-3 1.5A.5.5 0 0 1 5.5 15V7.93L.61 1.81A.5.5 0 0 1 1.5 1.5z"/>
+</svg>
+{% endset %}
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <div class="d-flex align-items-baseline gap-2">
+    <h2 class="mb-0">Customers</h2>
+    <span class="text-muted small" id="count-display">
+      {{ customers|length }}
+    </span>
+  </div>
+  <a href="{{ url_for('new_customer') }}" class="btn btn-primary">+ New Customer</a>
+</div>
+
+<div class="d-flex flex-wrap gap-3 mb-3 align-items-end">
+  <div class="flex-grow-1" style="max-width: 480px;">
+    <label class="form-label small text-muted mb-1" for="search">Search</label>
+    <input type="text" id="search" class="form-control"
+           value="{{ q }}"
+           placeholder="Filter by name, contact, email, notes…  (use * as wildcard)"
+           autofocus autocomplete="off">
+  </div>
+  <div>
+    <label class="form-label small text-muted mb-1" for="sort">Sort by</label>
+    <select id="sort" class="form-select" style="min-width: 220px;">
+      <option value="created_desc">Newest first (default)</option>
+      <option value="created_asc">Oldest first</option>
+      <option value="name_asc">Name A → Z</option>
+      <option value="name_desc">Name Z → A</option>
+    </select>
+  </div>
+</div>
+
+<div id="empty-state" class="alert alert-light border d-none">
+  No customers match your filters.
+</div>
+
+{% if not customers %}
+  <div class="alert alert-light border">
+    No customers yet. <a href="{{ url_for('new_customer') }}">Add your first one</a>.
+  </div>
+{% else %}
+
+{% set stage_options = {
+  'dropship':         [('initial_contact','Initial Contact'),
+                       ('in_discussion','In Discussion'),
+                       ('agreement_sent','Agreement Sent'),
+                       ('agreement_signed','Agreement Signed'),
+                       ('csv_sent','CSV Sent'),
+                       ('products_listed','Products Listed'),
+                       ('first_order_placed','First Order Placed'),
+                       ('other','Other'),
+                       ('_none_','(no activity)')],
+  'supply_only':      [('initial_contact','Initial Contact'),
+                       ('in_discussion','In Discussion'),
+                       ('agreement_sent','Agreement Sent'),
+                       ('agreement_signed','Agreement Signed'),
+                       ('other','Other'),
+                       ('_none_','(no activity)')],
+  'build_your_brand': [('initial_contact','Initial Contact'),
+                       ('in_discussion','In Discussion'),
+                       ('agreement_sent','Agreement Sent'),
+                       ('agreement_signed','Agreement Signed'),
+                       ('other','Other'),
+                       ('_none_','(no activity)')],
+  'white_label':      [('initial_contact','Initial Contact'),
+                       ('in_discussion','In Discussion'),
+                       ('agreement_sent','Agreement Sent'),
+                       ('agreement_signed','Agreement Signed'),
+                       ('other','Other'),
+                       ('_none_','(no activity)')],
+} %}
+
+<div class="table-responsive">
+  <table class="table table-hover align-middle bg-white shadow-sm" id="customer-table">
+    <thead class="table-light">
+      <tr>
+        <th>Customer</th>
+        <th>Primary contact</th>
+        <th>
+          Tags
+          <button class="btn btn-sm filter-toggle ms-1" id="ftoggle-tags"
+                  data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                  aria-expanded="false" title="Filter by tag">
+            {{ funnel_svg | safe }}
+            <span class="filter-count badge bg-primary ms-1 d-none" id="fcount-tags">0</span>
+          </button>
+          <div class="dropdown-menu p-2" style="min-width: 220px; max-height: 320px; overflow-y: auto;">
+            {% if not all_tags %}
+              <p class="small text-muted mb-0">No tags yet.</p>
+            {% else %}
+              {% for tname in all_tags %}
+                <div class="form-check">
+                  <input class="form-check-input filter-check" type="checkbox"
+                         data-column="tags" value="{{ tname }}" id="ft-tag-{{ loop.index }}">
+                  <label class="form-check-label small d-inline-flex align-items-center" for="ft-tag-{{ loop.index }}">
+                    <span class="badge tag-badge {{ tname | tag_color }} ms-1">{{ tname }}</span>
+                  </label>
+                </div>
+              {% endfor %}
+              <hr class="dropdown-divider">
+              <button type="button" class="btn btn-sm btn-link p-0 small filter-clear" data-column="tags">Clear</button>
+            {% endif %}
+          </div>
+        </th>
+        {% for ttype, label in TRACKER_TYPES %}
+          <th>
+            {{ label }}
+            <button class="btn btn-sm filter-toggle ms-1" id="ftoggle-{{ ttype }}"
+                    data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                    aria-expanded="false" title="Filter by stage">
+              {{ funnel_svg | safe }}
+              <span class="filter-count badge bg-primary ms-1 d-none" id="fcount-{{ ttype }}">0</span>
+            </button>
+            <div class="dropdown-menu p-2" style="min-width: 220px;">
+              {% for code, lbl in stage_options[ttype] %}
+                <div class="form-check">
+                  <input class="form-check-input filter-check" type="checkbox"
+                         data-column="{{ ttype }}" value="{{ code }}"
+                         id="f-{{ ttype }}-{{ loop.index }}">
+                  <label class="form-check-label small" for="f-{{ ttype }}-{{ loop.index }}">{{ lbl }}</label>
+                </div>
+              {% endfor %}
+              <hr class="dropdown-divider">
+              <button type="button" class="btn btn-sm btn-link p-0 small filter-clear" data-column="{{ ttype }}">Clear</button>
+            </div>
+          </th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in customers %}
+        {% set blob = (c.name or '') ~ ' ' ~ (c.notes or '') ~ ' ' ~ (c.all_contacts_text or '') ~ ' ' ~ (c.tags_csv or '') %}
+        {% set tag_list = (c.tags_csv or '').split('|') if c.tags_csv else [] %}
+        <tr class="customer-row"
+            data-search="{{ blob | lower }}"
+            data-tags="{{ (c.tags_csv or '') | lower }}"
+            data-name="{{ (c.name or '') | lower }}"
+            data-created="{{ c.created_at or '' }}"
+            data-stage-dropship="{{ customer_stages[c.id].get('dropship', '') }}"
+            data-stage-supply-only="{{ customer_stages[c.id].get('supply_only', '') }}"
+            data-stage-build-your-brand="{{ customer_stages[c.id].get('build_your_brand', '') }}"
+            data-stage-white-label="{{ customer_stages[c.id].get('white_label', '') }}"
+            style="cursor:pointer;"
+            onclick="window.location='{{ url_for('view_customer', customer_id=c.id) }}'">
+          <td>
+            <strong>{{ c.name }}</strong>
+            {% if c.notes %}<div class="text-muted small">{{ c.notes[:60] }}{% if c.notes|length > 60 %}…{% endif %}</div>{% endif %}
+          </td>
+          <td class="small">
+            {% if c.primary_contact_name %}
+              {{ c.primary_contact_name }}
+              {% if c.contact_count > 1 %}
+                <span class="badge bg-light text-muted ms-1" title="{{ c.contact_count }} contacts">+{{ c.contact_count - 1 }}</span>
+              {% endif %}
+              {% if c.primary_contact_email %}<br><span class="text-muted">{{ c.primary_contact_email }}</span>{% endif %}
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if tag_list %}
+              {% for t in tag_list %}
+                {# Click-to-filter: stop propagation so the row's
+                   navigation click handler doesn't fire too. #}
+                <button type="button"
+                        class="badge tag-badge {{ t | tag_color }} me-1 mb-1 tag-filter-btn"
+                        data-tag="{{ t }}"
+                        title="Filter by '{{ t }}'"
+                        onclick="event.stopPropagation();">{{ t }}</button>
+              {% endfor %}
+            {% else %}
+              <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+          {% for ttype, label in TRACKER_TYPES %}
+            {% set stage = customer_stages[c.id].get(ttype) %}
+            <td>
+              {% if stage %}
+                <span class="badge stage-badge stage-{{ stage }}">{{ ACTION_LABELS[stage] }}</span>
+              {% else %}
+                <span class="text-muted small">—</span>
+              {% endif %}
+            </td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  const input    = document.getElementById('search');
+  const sortSel  = document.getElementById('sort');
+  const tbody    = document.querySelector('#customer-table tbody');
+  const rows     = Array.from(document.querySelectorAll('.customer-row'));
+  const empty    = document.getElementById('empty-state');
+  const counter  = document.getElementById('count-display');
+  const totalCount = rows.length;
+  if (!input || rows.length === 0) return;
+
+  // Make filter dropdowns escape the .table-responsive overflow:auto so
+  // the menu isn't clipped when it extends below the table.
+  document.querySelectorAll('.filter-toggle').forEach(t => {
+    bootstrap.Dropdown.getOrCreateInstance(t, {
+      popperConfig: (defaultConfig) => ({ ...defaultConfig, strategy: 'fixed' })
+    });
+  });
+
+  const stageDatasetKey = {
+    dropship:         'stageDropship',
+    supply_only:      'stageSupplyOnly',
+    build_your_brand: 'stageBuildYourBrand',
+    white_label:      'stageWhiteLabel',
+  };
+
+  const filters = {
+    tags:             new Set(),
+    dropship:         new Set(),
+    supply_only:      new Set(),
+    build_your_brand: new Set(),
+    white_label:      new Set(),
+  };
+
+  // ---- Text matcher (with * wildcard, multi-term AND) -----------------
+  function buildMatcher(q) {
+    const trimmed = q.trim().toLowerCase();
+    if (!trimmed) return () => true;
+    const terms = trimmed.split(/\s+/).map(term => {
+      const escaped = term.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+      return new RegExp(escaped, 'i');
+    });
+    return (text) => terms.every(re => re.test(text));
+  }
+
+  function rowMatches(row, textMatch) {
+    if (!textMatch(row.dataset.search || '')) return false;
+
+    if (filters.tags.size > 0) {
+      const rowTags = (row.dataset.tags || '').split('|').filter(Boolean);
+      let any = false;
+      for (const t of filters.tags) { if (rowTags.includes(t)) { any = true; break; } }
+      if (!any) return false;
+    }
+
+    for (const col of ['dropship', 'supply_only', 'build_your_brand', 'white_label']) {
+      const sel = filters[col];
+      if (sel.size === 0) continue;
+      const stageVal = row.dataset[stageDatasetKey[col]] || '';
+      const lookup = stageVal === '' ? '_none_' : stageVal;
+      if (!sel.has(lookup)) return false;
+    }
+    return true;
+  }
+
+  function applyFilter() {
+    const textMatch = buildMatcher(input.value);
+    let visible = 0;
+    rows.forEach(row => {
+      const ok = rowMatches(row, textMatch);
+      row.style.display = ok ? '' : 'none';
+      if (ok) visible++;
+    });
+    empty.classList.toggle('d-none', visible !== 0);
+    if (counter) {
+      // "X of Y" when filters are active, otherwise just the total
+      counter.textContent = (visible === totalCount)
+        ? `${totalCount} customer${totalCount === 1 ? '' : 's'}`
+        : `${visible} of ${totalCount}`;
+    }
+  }
+
+  // ---- Sorting --------------------------------------------------------
+  function applySort() {
+    const mode = sortSel.value;
+    const sorted = rows.slice().sort((a, b) => {
+      switch (mode) {
+        case 'name_asc':
+          return a.dataset.name.localeCompare(b.dataset.name);
+        case 'name_desc':
+          return b.dataset.name.localeCompare(a.dataset.name);
+        case 'created_asc':
+          return (a.dataset.created || '').localeCompare(b.dataset.created || '');
+        case 'created_desc':
+        default:
+          return (b.dataset.created || '').localeCompare(a.dataset.created || '');
+      }
+    });
+    sorted.forEach(r => tbody.appendChild(r));  // re-append in new order
+  }
+
+  // ---- Wire up text + sort -------------------------------------------
+  input.addEventListener('input', applyFilter);
+  sortSel.addEventListener('change', applySort);
+
+  // ---- Filter checkboxes -----------------------------------------------
+  function refreshFilterButton(col) {
+    const count = filters[col].size;
+    const badge = document.getElementById('fcount-' + col);
+    const toggle = document.getElementById('ftoggle-' + col);
+    if (badge) {
+      badge.textContent = count;
+      badge.classList.toggle('d-none', count === 0);
+    }
+    if (toggle) {
+      toggle.classList.toggle('filter-active', count > 0);
+    }
+  }
+
+  document.querySelectorAll('.filter-check').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const col = cb.dataset.column;
+      if (cb.checked) filters[col].add(cb.value);
+      else            filters[col].delete(cb.value);
+      refreshFilterButton(col);
+      applyFilter();
+    });
+  });
+
+  document.querySelectorAll('.filter-clear').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const col = btn.dataset.column;
+      filters[col].clear();
+      document.querySelectorAll(`.filter-check[data-column="${col}"]`).forEach(cb => cb.checked = false);
+      refreshFilterButton(col);
+      applyFilter();
+    });
+  });
+
+  // ---- Tag click → toggle the matching filter checkbox ----------------
+  document.querySelectorAll('.tag-filter-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();   // don't navigate to the customer
+      const tagName = btn.dataset.tag;
+      const cb = document.querySelector(`.filter-check[data-column="tags"][value="${CSS.escape(tagName)}"]`);
+      if (!cb) return;
+      cb.checked = !cb.checked;
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
+      // Visual feedback so the user knows the filter changed
+      btn.classList.toggle('tag-active', cb.checked);
+    });
+  });
+
+  // Initial render
+  applySort();
+  applyFilter();
+})();
+</script>
+{% endblock %}

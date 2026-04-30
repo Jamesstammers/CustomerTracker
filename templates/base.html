@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Customer Tracker{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+{% if current_user.is_authenticated %}
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+      <strong>Customer Tracker</strong>
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="nav">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('dashboard') }}">Customers</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('new_customer') }}">+ New Customer</a>
+        </li>
+        {% if current_user.is_admin %}
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('admin_home') }}">Admin</a>
+        </li>
+        {% endif %}
+      </ul>
+      <ul class="navbar-nav align-items-lg-center">
+        <li class="nav-item d-flex align-items-center me-3">
+          <span class="text-white-50 small">Signed in as</span>
+          <strong class="text-white ms-1">{{ current_user.username }}</strong>
+          {% if current_user.is_admin %}<span class="badge bg-warning text-dark ms-2">admin</span>{% endif %}
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('logout') }}">Log out</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+{% endif %}
+
+<main class="container-fluid px-4 pb-5{% if not current_user.is_authenticated %} pt-4{% endif %}">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, msg in messages %}
+        <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show py-2 small{% if not current_user.is_authenticated %} mx-auto{% endif %}"
+             role="alert"
+             {% if not current_user.is_authenticated %}style="max-width: 32rem;"{% endif %}>
+          {{ msg }}
+          <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</main>
+
+<script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

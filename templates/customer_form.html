@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% set all_tags = all_tags or [] %}
+{% block title %}{% if customer %}Edit{% else %}New{% endif %} Customer &middot; Customer Tracker{% endblock %}
+{% block content %}
+
+<a href="{% if customer %}{{ url_for('view_customer', customer_id=customer.id) }}{% else %}{{ url_for('dashboard') }}{% endif %}"
+   class="text-decoration-none small text-muted">&larr; Back</a>
+<h2 class="mb-3 mt-1">{% if customer %}Edit customer{% else %}New customer{% endif %}</h2>
+
+<form method="post" class="customer-form">
+
+  {% if customer %}
+    {# Edit mode is just the basic fields — contacts and tags are managed
+       on the customer detail page so the edit form stays focused. #}
+    <div class="card shadow-sm">
+      <div class="card-body p-4" style="max-width: 640px;">
+        <div class="mb-3">
+          <label class="form-label">Customer name *</label>
+          <input type="text" name="name" class="form-control" required
+                 value="{{ form.name or customer.name }}">
+        </div>
+        <div class="mb-0">
+          <label class="form-label">Notes about the customer</label>
+          <textarea name="notes" rows="3" class="form-control"
+                    placeholder="Anything you'd like recorded about the company itself">{{ form.notes or customer.notes or '' }}</textarea>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    {# New-customer mode: 2-column layout — customer details on the left,
+       initial contact on the right. Both sections sit inside one card so
+       the page reads as a single form rather than three stacked panels. #}
+    <div class="card shadow-sm">
+      <div class="card-body p-3 p-md-4">
+        <div class="row g-4">
+
+          <!-- Left: customer details + tags -->
+          <div class="col-lg-6">
+            <h6 class="text-uppercase small text-muted fw-bold mb-3 form-section-heading">
+              Customer
+            </h6>
+            <div class="mb-3">
+              <label class="form-label small mb-1">Name *</label>
+              <input type="text" name="name" class="form-control" required
+                     value="{{ form.name or '' }}">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small mb-1">Notes</label>
+              <textarea name="notes" rows="2" class="form-control"
+                        placeholder="Anything about the company itself">{{ form.notes or '' }}</textarea>
+            </div>
+            <div class="mb-0">
+              <label class="form-label small mb-1">Tags</label>
+              <input type="text" name="tags" class="form-control" list="all-tags-list"
+                     placeholder="e.g. priority, uk, new-lead"
+                     value="{{ form.tags or '' }}"
+                     autocomplete="off">
+              <datalist id="all-tags-list">
+                {% for tname in all_tags %}<option value="{{ tname }}">{% endfor %}
+              </datalist>
+              <div class="form-text small mt-1">Comma-separated; case-insensitive.</div>
+            </div>
+          </div>
+
+          <!-- Right: initial contact -->
+          <div class="col-lg-6 form-section-divider">
+            <h6 class="text-uppercase small text-muted fw-bold mb-3 form-section-heading d-flex justify-content-between align-items-baseline">
+              <span>Initial contact</span>
+              <span class="text-muted small fw-normal" style="text-transform: none; letter-spacing: 0;">
+                optional — you can add more later
+              </span>
+            </h6>
+            <div class="row g-2">
+              <div class="col-md-6">
+                <label class="form-label small mb-1">Name</label>
+                <input type="text" name="contact_name" class="form-control"
+                       value="{{ form.contact_name or '' }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small mb-1">Role</label>
+                <input type="text" name="contact_role" class="form-control"
+                       placeholder="e.g. Buyer"
+                       value="{{ form.contact_role or '' }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small mb-1">Email</label>
+                <input type="email" name="contact_email" class="form-control"
+                       value="{{ form.contact_email or '' }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small mb-1">Phone</label>
+                <input type="text" name="contact_phone" class="form-control"
+                       value="{{ form.contact_phone or '' }}">
+              </div>
+              <div class="col-12">
+                <label class="form-label small mb-1">Notes about this contact</label>
+                <textarea name="contact_notes" rows="2" class="form-control"
+                          placeholder="Preferences, history…">{{ form.contact_notes or '' }}</textarea>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="mt-3 d-flex gap-2">
+    <button type="submit" class="btn btn-primary">
+      {% if customer %}Save changes{% else %}Create customer{% endif %}
+    </button>
+    <a href="{% if customer %}{{ url_for('view_customer', customer_id=customer.id) }}{% else %}{{ url_for('dashboard') }}{% endif %}"
+       class="btn btn-outline-secondary">Cancel</a>
+  </div>
+</form>
+{% endblock %}
