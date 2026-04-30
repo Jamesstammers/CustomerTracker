@@ -1,0 +1,16 @@
+<li class="list-group-item d-flex justify-content-between align-items-center product-row"
+    data-tracker-id="{{ tr.id }}" data-product-id="{{ p.product_id }}" data-product-name="{{ p.name }}">
+  <div class="form-check mb-0 flex-grow-1">
+    <input class="form-check-input product-check" type="checkbox"
+           id="prod-{{ tr.id }}-{{ p.product_id }}"
+           {% if p.is_listed %}checked{% endif %}>
+    <label class="form-check-label" for="prod-{{ tr.id }}-{{ p.product_id }}">
+      {{ p.name }}
+    </label>
+  </div>
+  <small class="text-muted product-meta">
+    {% if p.is_listed and p.updated_at %}
+      {{ p.updated_at | nice_dt }}{% if p.updated_by_name %} &middot; {{ p.updated_by_name }}{% endif %}
+    {% endif %}
+  </small>
+</li>

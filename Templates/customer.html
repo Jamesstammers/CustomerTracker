@@ -1,0 +1,471 @@
+{% extends "base.html" %}
+{% block title %}{{ customer.name }} &middot; Customer Tracker{% endblock %}
+{% block content %}
+
+<a href="{{ url_for('dashboard') }}" class="text-decoration-none small text-muted">&larr; All customers</a>
+
+<!-- Top section: name + notes + tags on the LEFT, contacts box on the RIGHT -->
+<div class="row g-4 mt-1 mb-4">
+
+  <!-- Left: name, notes, tags, edit/delete -->
+  <div class="col-lg-7">
+    <div class="d-flex justify-content-between align-items-start">
+      <div class="flex-grow-1">
+        <h2 class="mb-1">{{ customer.name }}</h2>
+        {% if customer.notes %}<p class="mt-1 mb-2 text-muted">{{ customer.notes }}</p>{% endif %}
+      </div>
+      <div class="d-flex gap-2 align-items-center ms-3">
+        <a href="{{ url_for('edit_customer', customer_id=customer.id) }}" class="btn btn-outline-secondary btn-sm">Edit</a>
+        {% if current_user.is_admin %}
+        <form method="post" action="{{ url_for('delete_customer', customer_id=customer.id) }}"
+              onsubmit="return confirm('Delete this customer and ALL their tracker history? This cannot be undone.');"
+              class="m-0">
+          <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Tags -->
+    <a id="tags"></a>
+    <div class="customer-tags d-flex flex-wrap gap-2 align-items-center mt-3">
+      {% for t in tags %}
+        <span class="badge tag-badge {{ t.name | tag_color }} d-inline-flex align-items-center">
+          {{ t.name }}
+          <form method="post" action="{{ url_for('remove_tag', customer_id=customer.id, tag_id=t.id) }}"
+                class="d-inline m-0 ms-1">
+            <button type="submit" class="tag-remove" title="Remove tag" aria-label="Remove">×</button>
+          </form>
+        </span>
+      {% endfor %}
+      <form method="post" action="{{ url_for('add_tag', customer_id=customer.id) }}"
+            class="d-inline-flex gap-1 m-0">
+        <input type="text" name="tags" class="form-control form-control-sm tag-input"
+               placeholder="add tag(s)…" list="all-tags-list" autocomplete="off"
+               style="width: 12rem;">
+        <button type="submit" class="btn btn-sm btn-outline-secondary">Add</button>
+      </form>
+      <datalist id="all-tags-list">
+        {% for tname in all_tags %}<option value="{{ tname }}">{% endfor %}
+      </datalist>
+    </div>
+    <div class="form-text small">Tags are case-insensitive. Separate multiple tags with commas.</div>
+  </div>
+
+  <!-- Right: contacts -->
+  <div class="col-lg-5">
+    <a id="contacts"></a>
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
+        <strong>Contacts</strong>
+        <button class="btn btn-sm btn-primary py-0" type="button"
+                data-bs-toggle="collapse" data-bs-target="#new-contact-form">
+          + Add
+        </button>
+      </div>
+
+      <!-- Add new contact (always collapsed by default; user opens it
+           via the + Add button regardless of whether contacts exist). -->
+      <div class="collapse" id="new-contact-form">
+        <form method="post" action="{{ url_for('add_contact', customer_id=customer.id) }}"
+              class="card-body bg-light border-bottom py-3">
+          <div class="row g-2">
+            <div class="col-md-6">
+              <label class="form-label small text-muted mb-1">Name *</label>
+              <input type="text" name="name" class="form-control form-control-sm" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small text-muted mb-1">Role</label>
+              <input type="text" name="role" class="form-control form-control-sm"
+                     placeholder="e.g. Buyer">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small text-muted mb-1">Email</label>
+              <input type="email" name="email" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small text-muted mb-1">Phone</label>
+              <input type="text" name="phone" class="form-control form-control-sm">
+            </div>
+            <div class="col-12">
+              <label class="form-label small text-muted mb-1">Notes</label>
+              <textarea name="notes" rows="2" class="form-control form-control-sm"
+                        placeholder="Preferences, history…"></textarea>
+            </div>
+          </div>
+          <div class="mt-2 d-flex gap-2">
+            <button type="submit" class="btn btn-primary btn-sm">Add contact</button>
+            <button type="button" class="btn btn-link btn-sm"
+                    data-bs-toggle="collapse" data-bs-target="#new-contact-form">Cancel</button>
+          </div>
+        </form>
+      </div>
+
+      {% if contacts %}
+        <ul class="list-group list-group-flush contact-list">
+          {% for co in contacts %}
+            <li class="list-group-item py-2">
+              {# Single-line layout when role/email/phone fit; expands naturally otherwise. #}
+              <div class="d-flex justify-content-between align-items-start gap-2">
+                <div class="flex-grow-1 min-w-0">
+                  <div class="d-flex flex-wrap gap-x-2 align-items-baseline">
+                    <strong>{{ co.name }}</strong>
+                    {% if co.role %}<span class="text-muted small">{{ co.role }}</span>{% endif %}
+                  </div>
+                  <div class="small text-muted contact-meta">
+                    {% if co.email %}<a href="mailto:{{ co.email }}">{{ co.email }}</a>{% endif %}
+                    {% if co.email and co.phone %}<span class="contact-sep">·</span>{% endif %}
+                    {% if co.phone %}{{ co.phone }}{% endif %}
+                  </div>
+                  {% if co.notes %}<div class="mt-1 small contact-notes">{{ co.notes }}</div>{% endif %}
+                </div>
+                <div class="d-flex gap-2 align-items-center flex-shrink-0">
+                  <button class="btn btn-link btn-sm p-0" type="button"
+                          data-bs-toggle="collapse" data-bs-target="#edit-contact-{{ co.id }}">Edit</button>
+                  <form method="post" action="{{ url_for('delete_contact', contact_id=co.id) }}"
+                        onsubmit="return confirm('Remove this contact?');" class="m-0 d-inline">
+                    <button class="btn btn-link btn-sm text-danger p-0" type="submit">Delete</button>
+                  </form>
+                </div>
+              </div>
+
+              <!-- Edit form (collapsed) -->
+              <div class="collapse mt-2" id="edit-contact-{{ co.id }}">
+                <form method="post" action="{{ url_for('edit_contact', contact_id=co.id) }}"
+                      class="bg-light p-3 rounded border">
+                  <div class="row g-2">
+                    <div class="col-md-6">
+                      <label class="form-label small text-muted mb-1">Name *</label>
+                      <input type="text" name="name" class="form-control form-control-sm"
+                             value="{{ co.name }}" required>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small text-muted mb-1">Role</label>
+                      <input type="text" name="role" class="form-control form-control-sm"
+                             value="{{ co.role or '' }}">
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small text-muted mb-1">Email</label>
+                      <input type="email" name="email" class="form-control form-control-sm"
+                             value="{{ co.email or '' }}">
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small text-muted mb-1">Phone</label>
+                      <input type="text" name="phone" class="form-control form-control-sm"
+                             value="{{ co.phone or '' }}">
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label small text-muted mb-1">Notes</label>
+                      <textarea name="notes" rows="2"
+                                class="form-control form-control-sm">{{ co.notes or '' }}</textarea>
+                    </div>
+                  </div>
+                  <div class="mt-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                    <button type="button" class="btn btn-link btn-sm"
+                            data-bs-toggle="collapse" data-bs-target="#edit-contact-{{ co.id }}">Cancel</button>
+                  </div>
+                </form>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="card-body text-muted small">No contacts yet.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<hr class="mb-3">
+
+<!-- Tracker tabs (full width) -->
+<ul class="nav nav-tabs mb-3" id="trackerTabs" role="tablist">
+  {% for ttype, label in TRACKER_TYPES %}
+    {% set tr = trackers[ttype] %}
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {% if loop.first %}active{% endif %}"
+              id="tab-{{ ttype }}" data-bs-toggle="tab"
+              data-bs-target="#pane-{{ ttype }}" type="button" role="tab">
+        {{ label }}
+        {% if tr.current_stage %}
+          <span class="badge stage-badge stage-{{ tr.current_stage }} ms-1">{{ ACTION_LABELS[tr.current_stage] }}</span>
+        {% else %}
+          <span class="badge bg-light text-muted ms-1">no activity</span>
+        {% endif %}
+      </button>
+    </li>
+  {% endfor %}
+</ul>
+
+<div class="tab-content">
+{% for ttype, label in TRACKER_TYPES %}
+  {% set tr = trackers[ttype] %}
+  <div class="tab-pane fade {% if loop.first %}show active{% endif %}"
+       id="pane-{{ ttype }}" role="tabpanel">
+    <a id="tracker-{{ ttype }}"></a>
+
+    <div class="row g-3">
+      <!-- Add entry form -->
+      <div class="col-12">
+        <div class="card shadow-sm">
+          <div class="card-header bg-white"><strong>Add an entry</strong></div>
+          <div class="card-body">
+            <form method="post" action="{{ url_for('add_action', tracker_id=tr.id) }}"
+                  class="add-entry-form">
+              <div class="row g-2">
+                <div class="col-md-5">
+                  <label class="form-label small text-muted">Action (optional)</label>
+                  <select name="action_type" class="form-select action-select">
+                    <option value="">— Comment only —</option>
+                    {% for code, lbl in tr.action_choices %}
+                      <option value="{{ code }}">{{ lbl }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-7">
+                  <label class="form-label small text-muted">Notes / comment</label>
+                  <textarea name="notes" rows="2" class="form-control"
+                            placeholder="Add details, context, next steps…"></textarea>
+                </div>
+                {# Custom title only revealed when "Other" is chosen. #}
+                <div class="col-12 custom-title-wrap" style="display: none;">
+                  <label class="form-label small text-muted">Custom title for this action *</label>
+                  <input type="text" name="custom_title" class="form-control custom-title-input"
+                         placeholder="e.g. Site visit, Sample sent, Phone interview…"
+                         maxlength="80">
+                  <div class="form-text small">Required when "Other" is selected.</div>
+                </div>
+              </div>
+              <div class="mt-2">
+                <button type="submit" class="btn btn-primary btn-sm">Add entry</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      {# Activity timeline. On dropship, share width with Products listed
+         once the customer has reached that stage; otherwise full width. #}
+      {% set show_products = (ttype == 'dropship' and tr.products_enabled) %}
+      <div class="col-{% if show_products %}lg-7{% else %}12{% endif %}">
+        <div class="card shadow-sm">
+          <div class="card-header bg-white"><strong>Activity</strong></div>
+          {% if not tr.actions %}
+            <div class="card-body text-muted">No activity yet.</div>
+          {% else %}
+          <ul class="list-group list-group-flush">
+            {% for a in tr.actions %}
+            <li class="list-group-item">
+              <div class="d-flex justify-content-between align-items-start">
+                <div class="flex-grow-1">
+                  {% if a.action_type == 'other' %}
+                    {# Custom user-supplied title for "Other" entries. #}
+                    <span class="badge stage-badge stage-other me-1">
+                      {{ a.custom_title or 'Other' }}
+                    </span>
+                  {% elif a.action_type and a.action_type != 'comment' %}
+                    <span class="badge stage-badge stage-{{ a.action_type }} me-1">
+                      {{ ACTION_LABELS.get(a.action_type, a.action_type) }}
+                    </span>
+                  {% else %}
+                    <span class="badge bg-secondary me-1">Comment</span>
+                  {% endif %}
+                  <span class="text-muted small">
+                    by {{ a.author or 'unknown' }} &middot; {{ a.created_at | nice_dt }}
+                  </span>
+                  {% if a.notes %}<div class="mt-1" style="white-space: pre-wrap;">{{ a.notes }}</div>{% endif %}
+                </div>
+                {% if a.created_by == current_user.id or current_user.is_admin %}
+                  <form method="post" action="{{ url_for('delete_action', action_id=a.id) }}"
+                        onsubmit="return confirm('Delete this entry?');" class="ms-2 m-0">
+                    <button class="btn btn-sm btn-link text-danger p-0" type="submit"
+                            title="Delete">&times;</button>
+                  </form>
+                {% endif %}
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+      </div>
+
+      {# Products listed — only on dropship and only after the user has
+         logged a "Products Listed" action. #}
+      {% if show_products %}
+      <div class="col-lg-5">
+        <div class="card shadow-sm">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <strong>Products listed</strong>
+            <span class="text-muted small" id="products-count-{{ tr.id }}">
+              {{ tr.products|selectattr('is_listed')|list|length }} of {{ tr.products|length }}
+            </span>
+          </div>
+          {% if not tr.products %}
+            <div class="card-body text-muted small">
+              No products defined.
+              {% if current_user.is_admin %}
+                <a href="{{ url_for('admin_home') }}">Add some in Admin</a>.
+              {% endif %}
+            </div>
+          {% else %}
+          <div class="card-body p-0" data-tracker-id="{{ tr.id }}">
+            <div class="px-3 pt-3 pb-1 d-flex justify-content-between align-items-center">
+              <span class="text-uppercase small fw-bold text-success">Listed</span>
+              <span class="badge bg-success-subtle text-success" id="listed-count-{{ tr.id }}">
+                {{ tr.products|selectattr('is_listed')|list|length }}
+              </span>
+            </div>
+            <ul class="list-group list-group-flush product-list" id="listed-{{ tr.id }}">
+              {% for p in tr.products if p.is_listed %}
+                {% include "_product_row.html" %}
+              {% endfor %}
+              {% if not (tr.products|selectattr('is_listed')|list) %}
+                <li class="list-group-item text-muted small empty-placeholder">Nothing listed yet.</li>
+              {% endif %}
+            </ul>
+
+            <div class="px-3 pt-3 pb-1 d-flex justify-content-between align-items-center border-top">
+              <span class="text-uppercase small fw-bold text-secondary">Not yet listed</span>
+              <span class="badge bg-secondary-subtle text-secondary" id="unlisted-count-{{ tr.id }}">
+                {{ tr.products|rejectattr('is_listed')|list|length }}
+              </span>
+            </div>
+            <ul class="list-group list-group-flush product-list" id="unlisted-{{ tr.id }}">
+              {% for p in tr.products if not p.is_listed %}
+                {% include "_product_row.html" %}
+              {% endfor %}
+              {% if not (tr.products|rejectattr('is_listed')|list) %}
+                <li class="list-group-item text-muted small empty-placeholder">All products listed!</li>
+              {% endif %}
+            </ul>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+{% endfor %}
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ---- Tab persistence via URL hash ---------------------------------------
+(function() {
+  const hash = window.location.hash;
+  if (hash && hash.startsWith('#tracker-')) {
+    const ttype = hash.replace('#tracker-', '');
+    const tab = document.getElementById('tab-' + ttype);
+    if (tab) new bootstrap.Tab(tab).show();
+  }
+  document.querySelectorAll('#trackerTabs button[data-bs-toggle="tab"]').forEach(btn => {
+    btn.addEventListener('shown.bs.tab', e => {
+      const id = e.target.id.replace('tab-', '');
+      history.replaceState(null, '', '#tracker-' + id);
+    });
+  });
+})();
+
+// ---- "Other" reveals the custom title input ----------------------------
+document.querySelectorAll('.add-entry-form').forEach(form => {
+  const select = form.querySelector('.action-select');
+  const wrap   = form.querySelector('.custom-title-wrap');
+  const input  = form.querySelector('.custom-title-input');
+  if (!select || !wrap || !input) return;
+
+  function syncVisibility() {
+    const isOther = select.value === 'other';
+    wrap.style.display = isOther ? '' : 'none';
+    input.required = isOther;
+    if (!isOther) input.value = '';
+  }
+  select.addEventListener('change', syncVisibility);
+  syncVisibility();
+});
+
+// ---- Dropship product checklist: toggle + animated re-bucket -----------
+function reflowEmptyPlaceholders(trackerId) {
+  ['listed', 'unlisted'].forEach(kind => {
+    const list = document.getElementById(kind + '-' + trackerId);
+    if (!list) return;
+    const realRows = list.querySelectorAll('.product-row').length;
+    let placeholder = list.querySelector('.empty-placeholder');
+    if (realRows === 0) {
+      if (!placeholder) {
+        placeholder = document.createElement('li');
+        placeholder.className = 'list-group-item text-muted small empty-placeholder';
+        placeholder.textContent = (kind === 'listed') ? 'Nothing listed yet.' : 'All products listed!';
+        list.appendChild(placeholder);
+      }
+    } else if (placeholder) {
+      placeholder.remove();
+    }
+  });
+}
+
+function insertSorted(list, row) {
+  const name = (row.dataset.productName || '').toLowerCase();
+  const rows = Array.from(list.querySelectorAll('.product-row'));
+  const before = rows.find(r => (r.dataset.productName || '').toLowerCase() > name);
+  if (before) list.insertBefore(row, before);
+  else        list.appendChild(row);
+}
+
+document.querySelectorAll('.product-check').forEach(cb => {
+  cb.addEventListener('change', async (e) => {
+    const row = e.target.closest('.product-row');
+    const trackerId = row.dataset.trackerId;
+    const productId = row.dataset.productId;
+    cb.disabled = true;
+
+    try {
+      const res = await fetch(`/trackers/${trackerId}/products/${productId}/toggle`, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'fetch' }
+      });
+      if (!res.ok) throw new Error('Toggle failed');
+      const data = await res.json();
+
+      cb.checked = data.is_listed;
+
+      const meta = row.querySelector('.product-meta');
+      if (data.is_listed) {
+        meta.textContent = data.updated_at_display + ' · ' + (data.updated_by || '');
+      } else {
+        meta.textContent = '';
+      }
+
+      const targetList = document.getElementById(
+        (data.is_listed ? 'listed-' : 'unlisted-') + trackerId
+      );
+      row.style.opacity = '0.4';
+      setTimeout(() => {
+        insertSorted(targetList, row);
+        row.style.opacity = '';
+        reflowEmptyPlaceholders(trackerId);
+
+        const listedCount   = document.querySelectorAll('#listed-'   + trackerId + ' .product-row').length;
+        const unlistedCount = document.querySelectorAll('#unlisted-' + trackerId + ' .product-row').length;
+        const total = listedCount + unlistedCount;
+        const lc = document.getElementById('listed-count-' + trackerId);
+        const uc = document.getElementById('unlisted-count-' + trackerId);
+        const tc = document.getElementById('products-count-' + trackerId);
+        if (lc) lc.textContent = listedCount;
+        if (uc) uc.textContent = unlistedCount;
+        if (tc) tc.textContent = `${listedCount} of ${total}`;
+      }, 120);
+    } catch (err) {
+      alert('Could not save change. Please try again.');
+      cb.checked = !cb.checked;
+    } finally {
+      cb.disabled = false;
+    }
+  });
+});
+</script>
+{% endblock %}
