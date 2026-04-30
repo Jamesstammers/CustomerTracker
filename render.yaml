@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: customer-tracker
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # Run init_db before each deploy. Idempotent — safe to re-run.
+    preDeployCommand: python init_db.py
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 60
+    envVars:
+      - key: TRACKER_SECRET_KEY
+        generateValue: true        # Render generates a strong random value once
+      - key: INIT_ADMIN_USERNAME
+        sync: false                # You'll set this in the Render dashboard
+      - key: INIT_ADMIN_PASSWORD
+        sync: false                # You'll set this in the Render dashboard
+      - key: PYTHON_VERSION
+        value: "3.12"
